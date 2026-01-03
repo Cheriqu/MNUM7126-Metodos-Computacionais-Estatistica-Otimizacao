@@ -1,0 +1,144 @@
+---
+lang: "pt-br"
+output:
+  pdf_document:
+    extra_dependencies: ["float"]
+    latex_engine: xelatex
+header-includes:
+   - \usepackage{cancel}
+   - \usepackage{fancyhdr}
+   - \pagestyle{fancy}
+   - \fancyhf{}  
+   - \renewcommand{\headrulewidth}{0pt}  
+   - \fancyfoot[L]{\includegraphics[width=2cm]{logo.png}}
+   - \fancyfoot[C]{}
+   - \fancyfoot[R]{Página \thepage}
+title: "Métodos Computacionais para Estatística e Otimização"
+subtitle: "Lista 1 - Luiz Henrique Barretta Francisco"
+---
+
+```{r echo=TRUE, warning=FALSE, results=FALSE, message=FALSE}
+
+```
+
+1. Considere a situação onde pretende-se automatizar a escrita de um email. O seu email conterá a frase “Estamos com uma super promoção para você que mora em Minas Gerais...” Conforme o estado, use a preposição apropriada.
+
+  - **No**: Acre, Alagoas, Amapá, Amazonas, Ceará, Espírito Santo, Maranhão, Mato Grosso, Mato Grosso do Sul, Pará, Rio de Janeiro, Rio Grande do Norte, Rio Grande do Sul, Tocantins, Distrito Federal.  
+  - **Na**: Bahia, Paraíba.  
+  - **Em**: Goiás, Minas Gerais, Rondônia, Roraima, Santa Catarina, São Paulo, Sergipe.
+
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+estados <- c("Minas Gerais", "Bahia", "Rio de Janeiro", "Sergipe")
+
+no <- c("Acre", "Alagoas", "Amapá", "Amazonas", "Ceará", "Espírito Santo",
+        "Maranhão", "Mato Grosso", "Mato Grosso do Sul", "Pará", "Rio de Janeiro",
+        "Rio Grande do Norte", "Rio Grande do Sul", "Tocantins", "Distrito Federal")
+na <- c("Bahia", "Paraíba")
+em <- c("Goiás", "Minas Gerais", "Rondônia", "Roraima", "Santa Catarina",
+        "São Paulo", "Sergipe")
+
+for (estado in estados) {
+  if (estado %in% no) {
+    preposicao <- "no"
+  } else if (estado %in% na) {
+    preposicao <- "na"
+  } else if (estado %in% em) {
+    preposicao <- "em"
+  } else {
+    preposicao <- "Estado não encontrado"
+  }
+  mensagem <- paste("Estamos com uma super promoção para você que mora",
+                    preposicao, estado, "...")
+  print(mensagem)}
+```
+
+2. Considere o jogo de bozó em que são lançados 5 dados e verifique, por simulação, qual a probabilidade (faça 50 mil simulações) dos resultados:
+
+  - **Full house**: 3 faces de um valor, 2 faces com outro. 
+  - **Sequência**: os valores foram sequência de 1 a 5 ou de 2 a 6.  
+  - **Quadra**: 4 faces são de mesmo valor.
+  - **General**: todas as faces são de mesmo valor.
+  
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+set.seed(42)
+res <- replicate(50000, sample(1:6, 5, replace = TRUE))
+
+full_house <- sum(apply(res, 2, function(x) any(table(x) == 3) & any(table(x) == 2))) / 50000
+
+sequencia <- sum(apply(res, 2, function(x) setequal(sort(x), 1:5) | setequal(sort(x), 2:6))) / 50000
+
+quadra <- sum(apply(res, 2, function(x) max(table(x)) == 4)) / 50000
+
+general <- sum(apply(res, 2, function(x) max(table(x)) == 5)) / 50000
+
+probs <- c(Full_House = full_house, Sequencia = sequencia, Quadra = quadra, General = general)
+print(probs)
+```
+
+3. Construa uma função para calcular o gasto com energia elétrica de um chuveiro que opera consumindo KWh, usado por horas semanais. Considere R$, o custo do KWh. Nesta descrição kwh, hora e custo são quantidades fornecidas pelo usuário. Para o cálculo do custo utilize a equação abaixo.
+
+\center{custo semanal = consumo hora (KWh) × duração de uso (h) × valor do KWh (RS)}
+
+Lembre-se de fazer o tratamento de exceções. Exemplifique o uso da sua função em casos em que ela deve funcionar e em casos que deve retornar erros ou mensagens
+  
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+calcula_gasto_energia <- function(kwh, horas, custo) {
+  if (!is.numeric(kwh) | !is.numeric(horas) | !is.numeric(custo)){
+    stop("Todos os valores devem ser numéricos.")
+  }
+  if (kwh <= 0 | horas <= 0 | custo <= 0) {
+    stop("Os valores devem ser positivos.")}
+  return(kwh * horas * custo)}
+
+print(calcula_gasto_energia(5, 10, 0.80))
+print(calcula_gasto_energia(7, 15, 1.20))
+print(calcula_gasto_energia(5, 10, 0.80))
+```
+
+4. Qual o rendimento do capital de R$ capital em um investimento que paga taxa% ao mês no período de periodo meses? As quantidades capital, taxa e periodo são fornecidas pelo usuário. Considere aseguinte equação
+
+$$valor final = valorinicial × (1 + taxa)^{meses}$$
+  
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+calcula_rendimento <- function(capital, taxa, periodo) {
+  if (!is.numeric(capital) | !is.numeric(taxa) | !is.numeric(periodo)) {
+    stop("Todos os valores devem ser numéricos.")
+  }
+  if (capital <= 0 | taxa < 0 | periodo <= 0) {
+    stop("Os valores devem ser positivos, e a taxa não pode ser negativa.")
+  }
+  return(capital * (1 + taxa / 100) ^ periodo)
+}
+
+print(calcula_rendimento(1000, 2, 12))
+print(calcula_rendimento(5000, 1.5, 24))
+print(calcula_rendimento(2000, 3, 6))
+```
+
+5. O site https://www.dicasdetreino.com.br/calculo-porcentagem-de-gordura-corporal/ apresenta equações para o cálculo do percentual de gordura corporal apartir das medidas de sete dobras. Forneça uma implementação computacional para que o profissional forneça as sete medidas e seja retornado o percentual de gordura corporal do paciente. Note que as equações são diferentes para pacientes do sexo masculino e feminino.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+calcula_percentual_gordura <- function(sexo, idade, dobras) {
+  if (!sexo %in% c("M", "F")) stop("Sexo deve ser 'M' (masculino) ou 'F' (feminino).")
+  if (!is.numeric(idade) || idade <= 0) stop("Idade deve ser um número positivo.")
+  if (length(dobras) != 7) stop("Devem ser fornecidas exatamente 7 medidas de dobras cutâneas.")
+  if (any(!is.numeric(dobras)) || any(dobras <= 0)) stop("As dobras devem ser números positivos.")
+  soma_dobras <- sum(dobras)
+  
+  if (sexo == "M") {
+    densidade <- 1.112 - 0.00043499 * soma_dobras + 0.00000055 * soma_dobras^2 - 0.00028826 * idade
+  } else {
+    densidade <- 1.0970 - 0.00046971 * soma_dobras + 0.00000056 * soma_dobras^2 - 0.00012828 * idade
+  }
+  percentual_gordura <- ((4.95 / densidade) - 4.5) * 100
+  return(percentual_gordura)
+}
+
+sexo <- "M"
+idade <- 30
+dobras <- c(12, 14, 15, 10, 18, 20, 22)
+percentual <- calcula_percentual_gordura(sexo, idade, dobras)
+print(paste("Percentual de gordura corporal:", round(percentual, 2), "%"))
+
+```

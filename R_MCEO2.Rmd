@@ -1,0 +1,139 @@
+---
+title: "Métodos Computacionais para Estatística e Otimização"
+output:
+  pdf_document:
+    extra_dependencies: float
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{cancel}
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyhf{}
+- \renewcommand{\headrulewidth}{0pt}
+- \fancyfoot[L]{\includegraphics[width=2cm]{logo.png}}
+- \fancyfoot[C]{}
+- \fancyfoot[R]{Página \thepage}
+lang: "pt-br"
+subtitle: "Lista 2 - Luiz Henrique Barretta Francisco"
+---
+
+Considere o conjunto de dados sobre voos e operações aéreas disponibilizado pela ANAC (Agência Nacional de Aviação Comercial) no seguinte endereço clique aqui. O arquivo chamado de _Dados_Estatisticos.csv_ apresenta uma série de informações sobre as operadores aéreas que atuam no Brasil. Forneça o código R usando o framework {tidyverse} para responder cada uma das seguintes questões práticas.
+
+```{r, warning=FALSE, echo=FALSE, message=FALSE, results=FALSE}
+library(tidyverse)
+library(dplyr)
+df <- read.csv("Dados_Estatisticos.csv",
+                  sep = ";", skip = 1, header = TRUE, stringsAsFactors = FALSE)
+```
+
+1. Quantas empresas nacionais e internacionais operam no mercado brasileiro?
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% distinct(EMPRESA_SIGLA, EMPRESA_NACIONALIDADE) %>%
+       count(EMPRESA_NACIONALIDADE, name = "Quantidade")
+```
+
+2. Considerando apenas empresas nacionais e o ano de 2020. Qual é a região de origem com maior número de decolagens? Apresente o resultado em uma tabela ordenada do maior para o menor.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% filter(EMPRESA_NACIONALIDADE == "BRASILEIRA", ANO == 2020, AEROPORTO_DE_ORIGEM_REGIAO != "") %>%
+       group_by(AEROPORTO_DE_ORIGEM_REGIAO) %>%
+       summarise(Total_Decolagens = sum(DECOLAGENS, na.rm = TRUE)) %>%
+       arrange(desc(Total_Decolagens))
+```
+3. Considerando apenas empresas nacionais. Faça uma tabela comparando o número de decolagens de acordo com a região de origem para cada ano. Organize a tabela resultante no formato wide com regiões lado a lado e ANO nas linhas.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE}
+g1 <- df %>% filter(EMPRESA_NACIONALIDADE == "BRASILEIRA", AEROPORTO_DE_ORIGEM_REGIAO != "") %>%
+       group_by(ANO, AEROPORTO_DE_ORIGEM_REGIAO) %>%
+       summarise(Total_Decolagens = sum(DECOLAGENS, na.rm = TRUE)) %>%
+       pivot_wider(names_from = AEROPORTO_DE_ORIGEM_REGIAO,
+                   values_from = Total_Decolagens, values_fill = 0) %>%
+       arrange(ANO)
+g1
+g1 %>% filter(ANO <= 2024) %>%
+       pivot_longer(cols = -ANO, names_to = "Regiao", values_to = "Total_Decolagens") %>%
+       ggplot(aes(x = ANO, y = Total_Decolagens, color = Regiao)) +
+       geom_line(size = 1) + geom_point() +
+       labs(title = "Número de Decolagens por Região ao Longo dos Anos",
+       x = "Ano", y = "Total de Decolagens", color = "Região de Origem") +
+       theme_minimal()
+```
+
+4. Considerando empresas nacionais e internacionais. Quais são as cinco empresas que mais voaram em termos de horas de voo no ano de 2020?
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df$HORAS_VOADAS <- as.numeric(gsub(",", ".", df$HORAS_VOADAS))
+
+df %>% filter(ANO == 2020) %>%
+       mutate(HORAS_VOADAS = ifelse(is.na(HORAS_VOADAS) | HORAS_VOADAS == "", 0, HORAS_VOADAS)) %>%
+       group_by(EMPRESA_SIGLA) %>%
+       summarise(total_horas = sum(HORAS_VOADAS, na.rm = TRUE)) %>%
+       arrange(desc(total_horas)) %>%
+       head(5)
+```
+
+5. Considerando apenas empresas internacionais. Para o ano de 2022, quais são as cinco empresas que mais carregaram passageiros de forma gratuita?
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% filter(ANO == 2022, EMPRESA_NACIONALIDADE == "ESTRANGEIRA") %>%
+       group_by(EMPRESA_SIGLA) %>%
+       summarise(total_passageiros_gratis = sum(as.numeric(PASSAGEIROS_GRATIS), na.rm = TRUE)) %>%
+       arrange(desc(total_passageiros_gratis)) %>%
+       head(5)
+```
+
+6. Considerando o consumo de combustível por distancia voada em km. Qual empresa nacional tem a menor
+taxa média de consumo, considerando o ano de 2022? Considere o consumo como a distancia/combustivel
+e ignore voos com NA.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% filter(ANO == 2022, EMPRESA_NACIONALIDADE == "BRASILEIRA",
+              !is.na(COMBUSTIVEL_LITROS), !is.na(DISTANCIA_VOADA_KM)) %>%
+       mutate(taxa_consumo = as.numeric(DISTANCIA_VOADA_KM) / as.numeric(COMBUSTIVEL_LITROS)) %>%
+       group_by(EMPRESA_SIGLA) %>%
+       summarise(media_taxa_consumo = mean(taxa_consumo, na.rm = TRUE)) %>%
+       arrange(media_taxa_consumo) %>%
+       slice(1)
+```
+
+7. Considere voos saindo do sudeste. Ordene as UFs de destino de acordo com sua frequência (linhas na
+base de dados).
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% filter(AEROPORTO_DE_ORIGEM_REGIAO == "SUDESTE",
+              AEROPORTO_DE_DESTINO_UF != "", AEROPORTO_DE_DESTINO_UF != " ") %>%
+       count(AEROPORTO_DE_DESTINO_UF, sort = TRUE)
+```
+
+8. Qual é o aeroporto de origem mais frequente de voos NÃO REGULARES (veja a coluna GRUPO DE
+VOO)?
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% filter(GRUPO_DE_VOO == "NÃO REGULAR") %>%
+       count(AEROPORTO_DE_ORIGEM_NOME, sort = TRUE) %>%
+       slice(1)
+```
+
+9. Considere os voos DOMESTICOS e a proporção de voos NÃO REGULAR. Quais são os 10 aeroportos
+de destino mais frequente?
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE}
+df %>% filter(NATUREZA == "DOMÉSTICA", GRUPO_DE_VOO == "NÃO REGULAR") %>%
+       count(AEROPORTO_DE_DESTINO_SIGLA, sort = TRUE) %>%
+       slice(1:10)
+```
+
+10. Considere todas as combinações de aeroportos de origem e destino. Quais são as dez combinações mais
+frequentes em termos de total de decolagens?
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE}
+df %>% filter(DECOLAGENS != "" & !is.na(DECOLAGENS)) %>%  
+       mutate(DECOLAGENS = as.numeric(DECOLAGENS)) %>%  
+       group_by(AEROPORTO_DE_ORIGEM_NOME, AEROPORTO_DE_DESTINO_NOME) %>%
+       summarise(total_decolagens = sum(DECOLAGENS, na.rm = TRUE), .groups = "drop") %>%
+       arrange(desc(total_decolagens)) %>%
+       slice(1:10)
+```

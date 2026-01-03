@@ -1,0 +1,198 @@
+---
+title: "Métodos Computacionais para Estatística e Otimização"
+output:
+  pdf_document:
+    extra_dependencies: float
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{cancel}
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyhf{}
+- \renewcommand{\headrulewidth}{0pt}
+- \fancyfoot[L]{\includegraphics[width=2cm]{logo.png}}
+- \fancyfoot[C]{}
+- \fancyfoot[R]{Página \thepage}
+lang: "pt-br"
+subtitle: "Lista 3 - Luiz Henrique Barretta Francisco"
+---
+
+Considere o conjunto de dados sobre voos e operações aéreas disponibilizado pela ANAC (Agência Nacional de Aviação Comercial) no seguinte endereço clique aqui. O arquivo chamado de _Dados_Estatisticos.csv_ apresenta uma série de informações sobre as operadores aéreas que atuam no Brasil. Forneça o código R usando o framework {tidyverse} para responder cada uma das seguintes questões práticas.
+
+```{r, warning=FALSE, echo=FALSE, message=FALSE, results=FALSE}
+library(tidyverse)
+library(dplyr)
+df <- read.csv("Dados_Estatisticos.csv",
+                  sep = ";", skip = 1, header = TRUE, stringsAsFactors = FALSE)
+```
+
+1. Considere que é de interesse visualizar a série temporal (anual) do número de decolagens para as 10 empresas nacionais que mais decolaram no período disponível de dados. Faça duas visualizações uma para enfatizar a comparação entre as empresas e outra para enfatizar a visualização da série de cada empresa. Considere apenas os registros que tenham o número de decolagens.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+top_empresas <- df %>%
+  filter(EMPRESA_NACIONALIDADE == "BRASILEIRA", !is.na(DECOLAGENS)) %>%
+  group_by(EMPRESA_NOME) %>%
+  summarise(Total = sum(DECOLAGENS, na.rm = TRUE)) %>%
+  arrange(desc(Total)) %>%
+  slice_head(n = 10) %>%
+  pull(EMPRESA_NOME)
+
+dados_top <- df %>%
+  filter(EMPRESA_NOME %in% top_empresas, !is.na(DECOLAGENS)) %>%
+  group_by(ANO, EMPRESA_NOME) %>%
+  summarise(Total_Decolagens = sum(DECOLAGENS, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(dados_top, aes(x = ANO, y = Total_Decolagens, color = EMPRESA_NOME)) +
+  geom_line(size = 1) +
+  labs(title = "Comparação entre as 10 empresas nacionais que mais decolaram",
+       x = "Ano", y = "Total de Decolagens", color = "Empresa") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9)) +
+  guides(color = guide_legend(nrow = 3, byrow = TRUE))
+
+```
+
+2. Faça uma visualização de dados comparar o número de passageiros pagantes entre empresas nacionais e estrangeiras ao longo dos anos.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+df %>%
+  filter(!is.na(PASSAGEIROS_PAGOS)) %>%
+  group_by(ANO, EMPRESA_NACIONALIDADE) %>%
+  summarise(Total_Passageiros = sum(PASSAGEIROS_PAGOS, na.rm = TRUE)) %>%
+  ggplot(aes(x = ANO, y = Total_Passageiros, fill = EMPRESA_NACIONALIDADE)) +
+  geom_col(position = "dodge") +
+  labs(title = "Passageiros Pagantes por Nacionalidade da Empresa ao Longo dos Anos",
+       x = "Ano", y = "Total de Passageiros", fill = "Nacionalidade") +
+  theme_minimal()
+```
+
+3. Faça uma visualização de dados comparar o número de passageiros pagantes entre empresas nacionais e estrangeiras de acordo com o grupo de voo.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+df %>%
+  filter(!is.na(PASSAGEIROS_PAGOS), !is.na(GRUPO_DE_VOO)) %>%
+  group_by(GRUPO_DE_VOO, EMPRESA_NACIONALIDADE) %>%
+  summarise(Total_Passageiros = sum(PASSAGEIROS_PAGOS, na.rm = TRUE)) %>%
+  ggplot(aes(x = GRUPO_DE_VOO, y = Total_Passageiros, fill = EMPRESA_NACIONALIDADE)) +
+  geom_col(position = "dodge") +
+  labs(title = "Passageiros Pagantes por Grupo de Voo e Nacionalidade da Empresa",
+       x = "Grupo de Voo", y = "Total de Passageiros", fill = "Nacionalidade") +
+  theme_minimal()
+```
+
+4. Faça uma visualização para enfatizar a distribuição da variável número de passageiros pagantes de acordo com a região de origem e natureza do voo. Enfatize a comparação entre DOMÉSTICA e INTERNACIONAL para cada região de origem. Para criar o gráfico use o log10 da variável PASSAGEIROS_PAGOS.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+df %>%
+  filter(!is.na(PASSAGEIROS_PAGOS), PASSAGEIROS_PAGOS > 0,
+         !is.na(AEROPORTO_DE_ORIGEM_REGIAO), !is.na(NATUREZA)) %>%
+  mutate(PASSAGEIROS_LOG = log10(PASSAGEIROS_PAGOS)) %>%
+  ggplot(aes(x = AEROPORTO_DE_ORIGEM_REGIAO, y = PASSAGEIROS_LOG, fill = NATUREZA)) +
+  geom_boxplot(outlier.size = 0.5) +
+  labs(title = "Distribuição (log10) de Passageiros Pagantes por Região e Natureza do Voo",
+       x = "Região de Origem", y = "log10(Passageiros Pagantes)", fill = "Natureza do Voo") +
+  theme_minimal()
+
+```
+
+5. Crie uma variável que indique a eficiencia no uso do combustível como sendo a razão entre o DISTANCIA_VOADA_KM e COMBUSTIVEL_LITROS. Compare as empresas de acordo com a região de origem e destino. Use a escala y em log10 para facilitar a comparação das regiões.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+df %>%
+  filter(!is.na(DISTANCIA_VOADA_KM), !is.na(COMBUSTIVEL_LITROS), COMBUSTIVEL_LITROS > 0,
+         !is.na(AEROPORTO_DE_ORIGEM_REGIAO), !is.na(AEROPORTO_DE_DESTINO_REGIAO)) %>%
+  mutate(EFICIENCIA = DISTANCIA_VOADA_KM / COMBUSTIVEL_LITROS) %>%
+  ggplot(aes(x = AEROPORTO_DE_ORIGEM_REGIAO, y = EFICIENCIA, fill = AEROPORTO_DE_DESTINO_REGIAO)) +
+  geom_boxplot(outlier.size = 0.5) +
+  scale_y_log10() +
+  labs(title = "Eficiência no Uso de Combustível por Região de Origem e Destino",
+       x = "Região de Origem", y = "Eficiência (Distância / Combustível)", fill = "Região de Destino") +
+  theme_minimal()
+
+```
+
+6. Faça uma visualização para mostrar a relação entre o consumo de combustível e a distância voada. Considere empresas nacionais e internacionais e os diferentes anos para enriquecer a visualização. Considere transformar as variáveis e use alguma forma estatística para enfatizar a forma do relacionamento.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+df %>%
+  filter(!is.na(COMBUSTIVEL_LITROS), !is.na(DISTANCIA_VOADA_KM),
+         COMBUSTIVEL_LITROS > 0, DISTANCIA_VOADA_KM > 0) %>%
+  mutate(log_comb = log10(COMBUSTIVEL_LITROS),
+         log_dist = log10(DISTANCIA_VOADA_KM)) %>%
+  ggplot(aes(x = log_dist, y = log_comb, color = EMPRESA_NACIONALIDADE)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ANO) +
+  labs(title = "Relação entre Consumo de Combustível e Distância Voada (log-log)",
+       x = "log10(Distância Voada em KM)", y = "log10(Combustível Consumido em Litros)",
+       color = "Nacionalidade da Empresa") +
+  theme_minimal()
+
+```
+
+7. Baseado na visualização em 6 você diria que tem alguma incosistencia com esses dados? Justique.
+
+Com base na visualização apresentada na questão 6, não há indícios de inconsistência nos dados. A relação entre o consumo de combustível e a distância voada apresenta um padrão log-log linear estável ao longo dos anos, o que é esperado: voos mais longos consomem mais combustível, mas de forma proporcional ao aumento da distância.
+
+Além disso, o alinhamento das observações em cada painel anual reforça que os dados seguem uma tendência coerente com a realidade operacional do setor aéreo. Não há outliers evidentes, rupturas abruptas ou mudanças drásticas no comportamento dos dados entre os anos que indicariam erro de entrada, falhas de medição ou problemas de agregação.
+
+Portanto, a visualização demonstra consistência e robustez na relação entre as variáveis ao longo do tempo e entre empresas nacionais e internacionais.
+
+8. Considerando apenas as empresas nacionais. Faça uma visualização para investigar se a região do
+aeroporto de origem influencia na relação entre combustível e distancia voada.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+df %>%
+  filter(EMPRESA_NACIONALIDADE == "BRASILEIRA",
+         !is.na(DISTANCIA_VOADA_KM),
+         !is.na(COMBUSTIVEL_LITROS),
+         COMBUSTIVEL_LITROS > 0,
+         DISTANCIA_VOADA_KM > 0,
+         AEROPORTO_DE_ORIGEM_REGIAO != "") %>%
+  ggplot(aes(x = log10(DISTANCIA_VOADA_KM), y = log10(COMBUSTIVEL_LITROS))) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred") +
+  facet_wrap(~AEROPORTO_DE_ORIGEM_REGIAO) +
+  labs(title = "Relação entre Distância Voada e Consumo de Combustível",
+       subtitle = "Empresas Brasileiras por Região de Origem",
+       x = "log10(Distância Voada em KM)",
+       y = "log10(Combustível Consumido em Litros)") +
+  theme_minimal()
+
+```
+
+9. O indicador RTK (Revenue tonne kilometer) refere-se ao volume de toneladas quilômetros transportada. Faça uma visualização da relação deste indicador com o consumo de combustível. Filtre apenas observações com ambas variáveis maiores que zero. Considere também que é de interesse comparar essa relação entre os diferentes anos. Considere incluir alguma camada estatística para enfatizar o formato do relacionamento entre as variáveis.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+ggplot(df %>%
+         filter(RTK > 0 & COMBUSTIVEL_LITROS > 0), aes(x = RTK, y = COMBUSTIVEL_LITROS, color = as.factor(ANO))) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(x = "Revenue Tonne Kilometers (RTK)", y = "Combustível (Litros)", color = "Ano") +
+  theme_minimal()
+```
+
+
+10. O indicador ATK (Available tonne kilometer) refere-se ao volume de tonelada quilômetro oferecida pela companhia. Crie uma visualização para explorar a relação entre estes indicadores. Considere aspectos como GRUPO_DE_VOO e NATUREZA além do anos.
+
+```{r, warning=FALSE, echo=TRUE, results=TRUE, message=FALSE, dpi=96}
+ggplot(df %>%
+               filter(ATK > 0 & RTK > 0), aes(x = ATK, y = RTK, color = as.factor(ANO))) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(x = "Available Tonne Kilometers (ATK)", y = "Revenue Tonne Kilometers (RTK)", color = "Ano") +
+  theme_minimal()
+
+ggplot(df %>%
+               filter(ATK > 0 & RTK > 0), aes(x = ATK, y = RTK, color = as.factor(GRUPO_DE_VOO))) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(x = "Available Tonne Kilometers (ATK)", y = "Revenue Tonne Kilometers (RTK)", color = "Grupo de Voo") +
+  theme_minimal()
+
+```

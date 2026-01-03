@@ -1,0 +1,230 @@
+---
+title: "Métodos Computacionais para Estatística e Otimização"
+output:
+  pdf_document:
+    extra_dependencies: float
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+  word_document: default
+header-includes:
+- \usepackage{cancel}
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyhf{}
+- \renewcommand{\headrulewidth}{0pt}
+- \fancyfoot[L]{\includegraphics[width=2cm]{logo.png}}
+- \fancyfoot[C]{}
+- \fancyfoot[R]{Página \thepage}
+lang: "pt-br"
+subtitle: "Avaliação 1 - Luiz Henrique Barretta Francisco"
+---
+
+1. Crie uma função em R que recebe suas matrizes quaisquer verifica se são compatíveis para a subtração. Se sim, retorna o resultado da subtração em uma nova matriz. Você deve usar a estrutura _for()_.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+subtrair_matrizes <- function(A, B) {
+  if (!all(dim(A) == dim(B))) {
+    message("As matrizes não têm dimensões compatíveis para subtração.")
+    return(NULL)}
+  resultado <- matrix(0, nrow = nrow(A), ncol = ncol(A))
+  for (i in 1:nrow(A)) {
+    for (j in 1:ncol(A)) {
+      resultado[i, j] <- A[i, j] - B[i, j]}}
+  return(resultado)}
+
+A <- matrix(1:9, nrow = 3)
+B <- matrix(9:1, nrow = 3)
+subtrair_matrizes(A, B)
+
+A <- matrix(1:9, nrow = 3)
+B <- matrix(9:24, nrow = 4)
+subtrair_matrizes(A, B)
+```
+
+2. Considere o conjunto de dados mtcars disponível no pacote datasets do R. Carregue esse conjunto de
+dados e faça:
+
+• Calcule as medidas descritivas mínimo, primeiro quartil, mediana, média, terceiro quartil e máximo para cada coluna que faça sentido calcular tais medidas.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+data(mtcars)
+summary(mtcars)
+```
+
+• Capture o nome das linhas deste dataset e faça eles virarem uma nova coluna, chamada car_type.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+mtcars$car_type <- rownames(mtcars)
+rownames(mtcars) <- NULL
+head(mtcars$car_type)
+```
+
+• Suponha que a coluna gear representa um variável categórica. Indique para o R a sua suposição.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+mtcars$gear <- as.factor(mtcars$gear)
+str(mtcars$gear)
+```
+
+• Calcule a média e o desvio-padrão da coluna mpg para cada nível da variável gear.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+aggregate(mpg ~ gear, data = mtcars, FUN = mean)
+aggregate(mpg ~ gear, data = mtcars, FUN = sd)
+```
+
+• Calcule a correlação de Pearson entre as colunas mpg e hp.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+cor(mtcars$mpg, mtcars$hp)
+```
+
+• Calcule a média da coluna mpg para carros em que a coluna drat é maior que sua mediana (medianada coluna drat).
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+mediana_drat <- median(mtcars$drat)
+mean(mtcars$mpg[mtcars$drat > mediana_drat])
+```
+
+3. Considere o conjunto de dados mtcars disponível no pacote datasets do R. Carregue esse conjunto dedados e faça:
+
+• Selecione uma coluna numérica e faça suas representações gráficas adequadas.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+library(ggplot2)
+
+ggplot(mtcars, aes(x = mpg)) + 
+  geom_histogram(binwidth = 2, fill = "skyblue", color = "black") + 
+  ggtitle("Histograma de mpg")
+
+ggplot(mtcars, aes(y = mpg)) + 
+  geom_boxplot(fill = "lightgreen") + 
+  ggtitle("Boxplot de mpg")
+```
+
+• Considere que as colunas vs, am, gear e carb são categóricas (qualitativas ordinais). Escolha uma delas e faça uma representação gráfica adequada.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+mtcars$am <- factor(mtcars$am, labels = c("Automático", "Manual"))
+ggplot(mtcars, aes(x = am)) + 
+  geom_bar(fill = "orange") + 
+  ggtitle("Frequência de carros por tipo de transmissão")
+```
+
+• Suponha que é de interesse verificar a relação entre as colunas mpg e disp. Faça uma representação gráfica adequada para ilustrar tal relação.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+ggplot(mtcars, aes(x = disp, y = mpg)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE, color = "blue") + 
+  ggtitle("Relação entre mpg e disp")
+```
+
+• Suponha que é de interesse verificar a relação entre as colunas vs e gear. Faça uma representação gráfica adequada para ilustrar tal relação.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+mtcars$vs <- factor(mtcars$vs, labels = c("V-shaped", "Straight"))
+mtcars$gear <- factor(mtcars$gear)
+ggplot(mtcars, aes(x = vs, fill = gear)) + 
+  geom_bar(position = "fill") + 
+  ylab("Proporção") + 
+  ggtitle("Proporção de gear por vs")
+```
+
+• Suponha que é de interesse verificar a relação entre gear e mpg faça uma representação gráfica adequada.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+ggplot(mtcars, aes(x = gear, y = mpg)) + 
+  geom_boxplot(fill = "lightblue") + 
+  ggtitle("Distribuição de mpg por número de marchas (gear)")
+```
+
+• Suponha que é de interesse verificar se a relação entre mpg e drat muda de acordo com os níveis da variável carb. Faça uma representação gráfica adequada para visualizar tal relação.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+mtcars$carb <- factor(mtcars$carb)
+ggplot(mtcars, aes(x = drat, y = mpg, color = carb)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) + 
+  ggtitle("Relação entre mpg e drat por nível de carb")
+```
+
+4. Crie uma função em C++ que recebe suas matrizes compatíveis para a subtração e retorna uma nova matriz com o resultado. Use a estrutura for de forma similar a que você usou em R. Use sua função em R usando o pacote Rcpp.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+library(Rcpp)
+
+cppFunction('
+NumericMatrix subtrairMatrizesRcpp(NumericMatrix A, NumericMatrix B) {
+  int nrow = A.nrow(), ncol = A.ncol();
+  NumericMatrix resultado(nrow, ncol);
+  
+  if (nrow != B.nrow() || ncol != B.ncol()) {
+    stop("As matrizes não são compatíveis para subtração.");
+  }
+
+  for (int i = 0; i < nrow; i++) {
+    for (int j = 0; j < ncol; j++) {
+      resultado(i, j) = A(i, j) - B(i, j);
+    }
+  }
+  return resultado;
+}
+')
+
+A <- matrix(1:9, nrow = 3)
+B <- matrix(9:1, nrow = 3)
+
+subtrairMatrizesRcpp(A, B)
+```
+
+5. Use a biblioteca Armadillo para criar uma função em R que faça a subtração entre duas matrizes.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+library(RcppArmadillo)
+
+Rcpp::cppFunction(depends = "RcppArmadillo", code = '
+arma::mat subtrairArmadillo(arma::mat A, arma::mat B) {
+  if (A.n_rows != B.n_rows || A.n_cols != B.n_cols) {
+    Rcpp::stop("As matrizes não são compatíveis para subtração.");
+  }
+  return A - B;
+}
+')
+
+A <- matrix(1:9, nrow = 3)
+B <- matrix(9:1, nrow = 3)
+
+subtrairArmadillo(A, B)
+```
+
+6. Compare o tempo computacional das três funções criadas anteriormente para fazer a subtração entre duas matrizes. Reporte o seus resultados com uma tabela e representação gráfica. Interprete os resultados.
+
+```{r, warning=FALSE, echo=TRUE, message=FALSE, results=TRUE}
+library(bench)
+library(dplyr)
+
+set.seed(123)
+A <- matrix(runif(1e6), nrow = 1000)
+B <- matrix(runif(1e6), nrow = 1000)
+
+resultados <- bench::mark(
+  R = subtrair_matrizes(A, B),
+  Rcpp = subtrairMatrizesRcpp(A, B),
+  RcppArmadillo = subtrairArmadillo(A, B),
+  iterations = 20,
+  check = TRUE)
+
+summary(resultados)
+
+autoplot(resultados) +
+  labs(title = "Comparação de tempo: Subtração de Matrizes",
+       subtitle = "R vs Rcpp vs RcppArmadillo",
+       y = "Tempo (ms)", x = "Método")
+```
+
+
+Com base na tabela e no gráfico gerado pelo _bench::mark_, é possível observar diferenças significativas de desempenho entre as três abordagens de subtração de matrizes. A implementação em R puro foi a mais lenta, com tempo mediano de execução em torno de 59 milissegundos, e a menor taxa de iterações por segundo. Em contraste, a versão com Rcpp obteve um desempenho substancialmente melhor, reduzindo o tempo para cerca de 7,7 milissegundos, o que representa uma taxa de execução quase 8 vezes maior. A abordagem mais eficiente foi a com RcppArmadillo, que alcançou tempo mediano de apenas 4 milissegundos e 228 execuções por segundo, destacando-se pela superioridade na velocidade.
+
+O gráfico confirma essas diferenças, tornando visível a clara vantagem das abordagens em C++, especialmente com RcppArmadillo. Isso se deve à eficiência computacional da biblioteca Armadillo, que é otimizada para operações matriciais de baixo nível. Em resumo, para tarefas computacionalmente intensivas como subtração de grandes matrizes, o uso de RcppArmadillo é claramente a escolha mais vantajosa.
